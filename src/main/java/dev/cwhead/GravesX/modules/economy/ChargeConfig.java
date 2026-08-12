@@ -66,9 +66,40 @@ public final class ChargeConfig {
         return "types." + t.name() + "." + tail;
     }
 
-    /** Format a number using rounding */
+    /** Whether large amounts should be abbreviated (e.g. 1500 -> 1.5K) */
+    public boolean abbreviateAmounts() {
+        return cfg.getBoolean("economy.abbreviate-amounts", true);
+    }
+
+    /** Format a number using rounding, optionally abbreviated with K/M/B/T suffixes */
     public String fmt(double d) {
         int places = rounding();
+
+        if (abbreviateAmounts()) {
+            double abs = Math.abs(d);
+            String suffix = "";
+            double divisor = 1.0;
+
+            if (abs >= 1_000_000_000_000.0) {
+                divisor = 1_000_000_000_000.0;
+                suffix = "T";
+            } else if (abs >= 1_000_000_000.0) {
+                divisor = 1_000_000_000.0;
+                suffix = "B";
+            } else if (abs >= 1_000_000.0) {
+                divisor = 1_000_000.0;
+                suffix = "M";
+            } else if (abs >= 1_000.0) {
+                divisor = 1_000.0;
+                suffix = "K";
+            }
+
+            if (!suffix.isEmpty()) {
+                BigDecimal scaled = BigDecimal.valueOf(d / divisor).setScale(Math.max(1, places), RoundingMode.HALF_UP);
+                return scaled.stripTrailingZeros().toPlainString() + suffix;
+            }
+        }
+
         BigDecimal bd = new BigDecimal(d).setScale(places, RoundingMode.HALF_UP);
         return bd.stripTrailingZeros().toPlainString();
     }
